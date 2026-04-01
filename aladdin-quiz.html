@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>アラジンクイズ</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --gold: #d4a017;
+  --gold-light: #f5d76e;
+  --gold-glow: #fceabb;
+  --purple-deep: #1a0a3e;
+  --purple: #4c1d95;
+  --purple-mid: #7c3aed;
+  --purple-light: #c4b5fd;
+  --purple-bg: #ede9fe;
+  --blue-magic: #2563eb;
+  --teal: #0d9488;
+  --sand: #fef3c7;
+  --sand-dark: #f59e0b;
+  --text: #1e1b4b;
+  --text-light: #6d63a8;
+  --bg: #f5f0ff;
+  --card-bg: rgba(255,255,255,0.95);
+  --card-shadow: 0 4px 28px rgba(76, 29, 149, 0.15);
+  --green: #22c55e;
+  --green-bg: #dcfce7;
+  --red: #ef4444;
+  --red-bg: #fee2e2;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  font-family: -apple-system, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+body {
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  background: linear-gradient(170deg, #0f0628 0%, #1a0a3e 30%, #2d1b69 60%, #1a0a3e 100%);
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.screen {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  height: 100dvh;
+  padding: 24px;
+  animation: fadeIn 0.5s ease;
+}
+.screen.active { display: flex; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Stars BG ── */
+.stars {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.star {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background: #fff;
+  border-radius: 50%;
+  animation: twinkle 2s ease-in-out infinite alternate;
+}
+@keyframes twinkle {
+  from { opacity: 0.2; }
+  to { opacity: 1; }
+}
+
+/* ── Start Screen ── */
+#start-screen { gap: 20px; text-align: center; position: relative; z-index: 1; }
+
+#start-screen h1 {
+  font-size: 2.6rem;
+  color: var(--gold-light);
+  letter-spacing: 0.06em;
+  text-shadow: 0 2px 20px rgba(245, 215, 110, 0.4);
+}
+
+#start-screen .subtitle {
+  font-size: 1.15rem;
+  color: var(--purple-light);
+  line-height: 1.8;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 48px;
+  border: none;
+  border-radius: 16px;
+  font-size: 1.3rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+  z-index: 1;
+}
+.btn:active { transform: scale(0.96); }
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--gold), #b8860b);
+  color: #1a0a3e;
+  box-shadow: 0 4px 20px rgba(212, 160, 23, 0.4);
+  text-shadow: none;
+}
+
+.btn-map {
+  background: rgba(255,255,255,0.95);
+  color: var(--blue-magic);
+  border: 2px solid #93c5fd;
+  font-size: 1.1rem;
+  padding: 12px 28px;
+  border-radius: 12px;
+  text-decoration: none;
+  margin-top: 4px;
+}
+
+/* ── Quiz Screen ── */
+#quiz-screen {
+  justify-content: flex-start;
+  padding: 20px 24px;
+  gap: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  position: relative;
+  z-index: 1;
+}
+
+.progress-bar {
+  width: 100%;
+  max-width: 640px;
+  height: 10px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 5px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold), var(--gold-light));
+  border-radius: 5px;
+  transition: width 0.5s ease;
+}
+
+.progress-text {
+  font-size: 1rem;
+  color: var(--purple-light);
+  margin-top: 8px;
+  flex-shrink: 0;
+}
+
+.quiz-card {
+  width: 100%;
+  max-width: 640px;
+  background: var(--card-bg);
+  border-radius: 24px;
+  box-shadow: var(--card-shadow);
+  padding: 24px 22px 22px;
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border: 1.5px solid rgba(196, 181, 253, 0.3);
+}
+
+.quiz-category {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  align-self: flex-start;
+}
+.cat-story { background: #fce7f3; color: #be185d; }
+.cat-character { background: #e0f2fe; color: #0369a1; }
+.cat-music { background: #fef3c7; color: #b45309; }
+.cat-stage { background: #f3e8ff; color: #7c3aed; }
+.cat-trivia { background: #d1fae5; color: #065f46; }
+
+.quiz-svg {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.quiz-svg svg {
+  width: 200px;
+  height: 130px;
+}
+
+.quiz-question {
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.choice-btn {
+  padding: 16px 12px;
+  border: 2.5px solid var(--purple-light);
+  border-radius: 16px;
+  background: var(--purple-bg);
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, transform 0.15s;
+  text-align: center;
+  line-height: 1.4;
+}
+.choice-btn:active { transform: scale(0.97); }
+.choice-btn.correct {
+  border-color: var(--green);
+  background: var(--green-bg);
+  animation: popCorrect 0.4s ease;
+}
+.choice-btn.wrong {
+  border-color: var(--red);
+  background: var(--red-bg);
+  animation: shake 0.4s ease;
+}
+.choice-btn.reveal-correct {
+  border-color: var(--green);
+  background: var(--green-bg);
+}
+.choice-btn.disabled {
+  pointer-events: none;
+  opacity: 0.6;
+}
+.choice-btn.disabled.correct,
+.choice-btn.disabled.reveal-correct { opacity: 1; }
+
+@keyframes popCorrect {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+.explanation {
+  display: none;
+  background: linear-gradient(135deg, #fefce8, #fef9c3);
+  border: 2px solid var(--gold-light);
+  border-radius: 16px;
+  padding: 18px 16px;
+  font-size: 1.1rem;
+  line-height: 1.65;
+  color: var(--text);
+  animation: fadeIn 0.35s ease;
+}
+.explanation.show { display: block; }
+
+.explanation .result-label {
+  font-weight: 800;
+  font-size: 1.15rem;
+  margin-bottom: 6px;
+}
+.explanation .result-label.correct-label { color: var(--green); }
+.explanation .result-label.wrong-label { color: var(--red); }
+
+.next-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+/* ── Result Screen ── */
+#result-screen {
+  gap: 20px;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+.result-score {
+  font-size: 4rem;
+  font-weight: 900;
+  color: var(--gold-light);
+  text-shadow: 0 2px 16px rgba(245,215,110,0.4);
+}
+.result-score span { font-size: 1.8rem; }
+
+.result-msg {
+  font-size: 1.3rem;
+  color: var(--purple-light);
+  line-height: 1.6;
+}
+
+.result-detail {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin: 8px 0;
+}
+.result-dot {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1rem;
+  color: #fff;
+}
+.result-dot.ok { background: var(--green); }
+.result-dot.ng { background: var(--red); }
+
+/* ── Overlay flash ── */
+.flash-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  opacity: 0;
+}
+.flash-overlay.flash-green {
+  background: radial-gradient(circle, rgba(34,197,94,0.3) 0%, transparent 70%);
+  animation: flash 0.6s ease;
+}
+.flash-overlay.flash-red {
+  background: radial-gradient(circle, rgba(239,68,68,0.25) 0%, transparent 70%);
+  animation: flash 0.6s ease;
+}
+@keyframes flash {
+  0% { opacity: 0; }
+  30% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ── Magic sparkle ── */
+.sparkle {
+  position: fixed;
+  pointer-events: none;
+  z-index: 200;
+  animation: sparkleFly 1s ease forwards;
+}
+@keyframes sparkleFly {
+  0% { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(-60px) scale(0) rotate(360deg); opacity: 0; }
+}
+
+/* ── Confetti ── */
+.confetti-piece {
+  position: fixed;
+  border-radius: 2px;
+  z-index: 200;
+  pointer-events: none;
+  animation: confettiFall 1.2s ease forwards;
+}
+@keyframes confettiFall {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(80vh) rotate(720deg); opacity: 0; }
+}
+
+@media (max-width: 600px) {
+  .choices { grid-template-columns: 1fr; }
+  .quiz-question { font-size: 1.15rem; }
+  #start-screen h1 { font-size: 2rem; }
+  .quiz-svg svg { width: 160px; height: 110px; }
+}
+</style>
+</head>
+<body>
+
+<div class="stars" id="stars-container"></div>
+<div id="flash" class="flash-overlay"></div>
+
+<!-- ═══ Start Screen ═══ -->
+<div id="start-screen" class="screen active">
+  <svg width="140" height="140" viewBox="0 0 140 140" fill="none">
+    <!-- Lamp -->
+    <ellipse cx="70" cy="120" rx="36" ry="6" fill="rgba(245,215,110,0.2)"/>
+    <path d="M50 100 Q45 75 55 68 L63 62 Q58 48 68 40 L70 38 Q72 40 75 42 L85 62 Q95 68 95 75 Q100 100 95 100Z" fill="url(#lampGrad)" stroke="#b8860b" stroke-width="2"/>
+    <ellipse cx="72" cy="100" rx="24" ry="5" fill="#b8860b"/>
+    <path d="M55 62 Q50 55 58 52 Q62 56 65 62" fill="#d4a017"/>
+    <!-- Magic smoke -->
+    <path d="M68 38 Q60 20 50 15 Q55 8 65 12 Q60 5 70 2 Q75 8 72 14 Q82 8 85 15 Q78 18 72 38" fill="url(#smokeGrad)" opacity="0.7"/>
+    <!-- Sparkles -->
+    <circle cx="45" cy="10" r="2" fill="#f5d76e" opacity="0.8"/>
+    <circle cx="95" cy="15" r="1.5" fill="#f5d76e" opacity="0.6"/>
+    <circle cx="38" cy="28" r="1.5" fill="#c4b5fd" opacity="0.7"/>
+    <circle cx="100" cy="30" r="2" fill="#c4b5fd" opacity="0.5"/>
+    <circle cx="55" cy="5" r="1" fill="#fff" opacity="0.9"/>
+    <path d="M48 20 L50 16 L52 20 L50 24Z" fill="#f5d76e" opacity="0.5"/>
+    <path d="M90 22 L92 18 L94 22 L92 26Z" fill="#f5d76e" opacity="0.5"/>
+    <defs>
+      <linearGradient id="lampGrad" x1="50" y1="40" x2="100" y2="100">
+        <stop offset="0%" stop-color="#f5d76e"/>
+        <stop offset="100%" stop-color="#d4a017"/>
+      </linearGradient>
+      <linearGradient id="smokeGrad" x1="60" y1="38" x2="70" y2="0">
+        <stop offset="0%" stop-color="#c084fc"/>
+        <stop offset="100%" stop-color="#7c3aed" stop-opacity="0.2"/>
+      </linearGradient>
+    </defs>
+  </svg>
+  <h1>アラジンクイズ</h1>
+  <p class="subtitle">劇団四季ミュージカル「アラジン」<br>全10問に挑戦しよう！</p>
+  <button class="btn btn-primary" onclick="startQuiz()">冒険スタート！</button>
+</div>
+
+<!-- ═══ Quiz Screen ═══ -->
+<div id="quiz-screen" class="screen">
+  <div class="progress-bar"><div id="progress-fill" class="progress-fill"></div></div>
+  <div id="progress-text" class="progress-text"></div>
+  <div class="quiz-card">
+    <div id="quiz-cat" class="quiz-category"></div>
+    <div id="quiz-svg" class="quiz-svg"></div>
+    <div id="quiz-question" class="quiz-question"></div>
+    <div id="choices" class="choices"></div>
+    <div id="explanation" class="explanation"></div>
+    <div id="next-area" class="next-area" style="display:none;"></div>
+  </div>
+</div>
+
+<!-- ═══ Result Screen ═══ -->
+<div id="result-screen" class="screen">
+  <svg width="110" height="110" viewBox="0 0 110 110" fill="none">
+    <circle cx="55" cy="55" r="48" fill="rgba(245,215,110,0.15)" stroke="var(--gold-light)" stroke-width="3"/>
+    <text x="55" y="65" text-anchor="middle" font-size="44">🧞</text>
+  </svg>
+  <div id="result-score" class="result-score"></div>
+  <div id="result-msg" class="result-msg"></div>
+  <div id="result-detail" class="result-detail"></div>
+  <button class="btn btn-primary" onclick="startQuiz()">もう一度チャレンジ！</button>
+</div>
+
+<script>
+// ── Create stars ──
+(function(){
+  const c = document.getElementById('stars-container');
+  for(let i=0;i<60;i++){
+    const s = document.createElement('div');
+    s.className='star';
+    s.style.left=Math.random()*100+'%';
+    s.style.top=Math.random()*100+'%';
+    s.style.animationDelay=Math.random()*3+'s';
+    s.style.animationDuration=(1.5+Math.random()*2)+'s';
+    const sz=1+Math.random()*2.5;
+    s.style.width=sz+'px';s.style.height=sz+'px';
+    c.appendChild(s);
+  }
+})();
+
+// ── SVG illustrations ──
+const svgIllustrations = {
+  lamp: `<svg viewBox="0 0 200 130" fill="none">
+    <ellipse cx="100" cy="115" rx="45" ry="7" fill="rgba(245,215,110,0.15)"/>
+    <path d="M65 105 Q58 78 70 70 L82 62 Q76 46 88 38 L100 32 Q112 38 118 46 L130 70 Q142 78 135 105Z" fill="url(#lg1)" stroke="#b8860b" stroke-width="2"/>
+    <ellipse cx="100" cy="105" rx="36" ry="6" fill="#b8860b"/>
+    <path d="M72 62 Q65 55 75 50 Q80 56 84 62" fill="#d4a017"/>
+    <path d="M88 32 Q80 14 72 8" stroke="#c084fc" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.7"/>
+    <path d="M88 32 Q92 12 100 5" stroke="#a78bfa" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.6"/>
+    <path d="M88 32 Q82 18 88 8" stroke="#e9d5ff" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.5"/>
+    <circle cx="70" cy="6" r="3" fill="#f5d76e" opacity="0.6"/><circle cx="100" cy="3" r="2" fill="#c4b5fd" opacity="0.7"/>
+    <circle cx="85" cy="10" r="2" fill="#fff" opacity="0.5"/>
+    <defs><linearGradient id="lg1" x1="65" y1="32" x2="135" y2="105"><stop offset="0%" stop-color="#f5d76e"/><stop offset="100%" stop-color="#d4a017"/></linearGradient></defs>
+  </svg>`,
+
+  genie: `<svg viewBox="0 0 200 130" fill="none">
+    <ellipse cx="100" cy="120" rx="30" ry="5" fill="rgba(124,58,237,0.2)"/>
+    <path d="M85 120 Q75 90 80 70 Q85 55 100 50 Q115 55 120 70 Q125 90 115 120Z" fill="url(#gg1)" opacity="0.9"/>
+    <circle cx="100" cy="42" r="18" fill="#7c3aed"/>
+    <circle cx="93" cy="38" r="3" fill="#fff"/><circle cx="107" cy="38" r="3" fill="#fff"/>
+    <circle cx="93" cy="38" r="1.5" fill="#1e1b4b"/><circle cx="107" cy="38" r="1.5" fill="#1e1b4b"/>
+    <path d="M94 48 Q100 54 106 48" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path d="M82 30 Q90 20 100 24" stroke="#c084fc" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path d="M118 30 Q110 20 100 24" stroke="#c084fc" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <rect x="88" y="24" width="24" height="4" rx="2" fill="#d4a017"/>
+    <circle cx="100" cy="22" r="4" fill="#f5d76e"/>
+    <path d="M70 75 Q50 65 40 75 Q35 80 45 82" stroke="#7c3aed" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <path d="M130 75 Q150 65 160 75 Q165 80 155 82" stroke="#7c3aed" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <circle cx="42" cy="80" r="5" fill="#7c3aed"/><circle cx="158" cy="80" r="5" fill="#7c3aed"/>
+    <circle cx="60" cy="18" r="2" fill="#f5d76e" opacity="0.6"/><circle cx="140" cy="20" r="1.5" fill="#f5d76e" opacity="0.5"/>
+    <path d="M55 10 L57 6 L59 10 L57 14Z" fill="#f5d76e" opacity="0.4"/>
+    <defs><linearGradient id="gg1" x1="85" y1="50" x2="115" y2="120"><stop offset="0%" stop-color="#a78bfa"/><stop offset="100%" stop-color="#7c3aed" stop-opacity="0.3"/></linearGradient></defs>
+  </svg>`,
+
+  carpet: `<svg viewBox="0 0 200 130" fill="none">
+    <ellipse cx="100" cy="118" rx="60" ry="4" fill="rgba(212,160,23,0.1)"/>
+    <path d="M30 65 Q50 45 100 50 Q150 45 170 65 Q165 85 100 80 Q35 85 30 65Z" fill="url(#cg1)" stroke="#b8860b" stroke-width="2"/>
+    <path d="M40 62 Q60 52 100 55 Q140 52 160 62 Q155 75 100 72 Q45 75 40 62Z" fill="#7c3aed" opacity="0.3"/>
+    <line x1="55" y1="55" x2="55" y2="75" stroke="#d4a017" stroke-width="1" opacity="0.5"/>
+    <line x1="80" y1="52" x2="80" y2="78" stroke="#d4a017" stroke-width="1" opacity="0.5"/>
+    <line x1="120" y1="52" x2="120" y2="78" stroke="#d4a017" stroke-width="1" opacity="0.5"/>
+    <line x1="145" y1="55" x2="145" y2="75" stroke="#d4a017" stroke-width="1" opacity="0.5"/>
+    <rect x="28" y="62" width="6" height="8" rx="1" fill="#d4a017"/>
+    <rect x="166" y="62" width="6" height="8" rx="1" fill="#d4a017"/>
+    <circle cx="70" cy="30" r="12" fill="#fbbf24" opacity="0.8"/>
+    <circle cx="70" cy="30" r="9" fill="#fef3c7"/>
+    <path d="M140 20 L142 16 L144 20 L142 24Z" fill="#f5d76e" opacity="0.6"/>
+    <circle cx="155" cy="35" r="1.5" fill="#f5d76e" opacity="0.5"/>
+    <circle cx="50" cy="18" r="1.5" fill="#fff" opacity="0.4"/>
+    <defs><linearGradient id="cg1" x1="30" y1="45" x2="170" y2="85"><stop offset="0%" stop-color="#7c3aed"/><stop offset="30%" stop-color="#6d28d9"/><stop offset="70%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#6d28d9"/></linearGradient></defs>
+  </svg>`,
+
+  palace: `<svg viewBox="0 0 200 130" fill="none">
+    <rect x="50" y="45" width="100" height="65" rx="4" fill="#fef3c7" stroke="#d4a017" stroke-width="2"/>
+    <path d="M45 48 L100 15 L155 48Z" fill="#d4a017"/>
+    <circle cx="100" cy="32" r="6" fill="#f5d76e"/>
+    <path d="M35 48 L45 25 L55 48" fill="#f59e0b"/>
+    <path d="M145 48 L155 25 L165 48" fill="#f59e0b"/>
+    <circle cx="45" cy="22" r="5" fill="#fbbf24"/>
+    <circle cx="155" cy="22" r="5" fill="#fbbf24"/>
+    <rect x="70" y="55" width="20" height="16" rx="8" fill="#bae6fd" stroke="#d4a017" stroke-width="1.5"/>
+    <rect x="110" y="55" width="20" height="16" rx="8" fill="#bae6fd" stroke="#d4a017" stroke-width="1.5"/>
+    <rect x="87" y="78" width="26" height="32" rx="13" fill="#a0583b" stroke="#d4a017" stroke-width="1.5"/>
+    <circle cx="108" cy="94" r="2" fill="#d4a017"/>
+    <circle cx="100" cy="8" r="3" fill="#f5d76e" opacity="0.6"/>
+    <path d="M30 110 L170 110" stroke="#d4a017" stroke-width="2"/>
+  </svg>`,
+
+  cave: `<svg viewBox="0 0 200 130" fill="none">
+    <path d="M10 120 Q15 40 50 30 Q80 22 100 25 Q120 22 150 30 Q185 40 190 120Z" fill="#3b1f0b"/>
+    <path d="M25 120 Q30 55 60 45 Q85 38 100 40 Q115 38 140 45 Q170 55 175 120Z" fill="#1a0a04"/>
+    <ellipse cx="100" cy="95" rx="8" ry="12" fill="#f5d76e" opacity="0.8"/>
+    <ellipse cx="100" cy="95" rx="5" ry="8" fill="#fef3c7"/>
+    <path d="M95 85 Q100 75 105 85" fill="none" stroke="#f5d76e" stroke-width="2" opacity="0.5"/>
+    <circle cx="100" cy="73" r="2" fill="#f5d76e" opacity="0.4"/>
+    <circle cx="65" cy="70" r="4" fill="#d4a017" opacity="0.3"/>
+    <circle cx="130" cy="75" r="3" fill="#d4a017" opacity="0.25"/>
+    <circle cx="80" cy="100" r="2.5" fill="#f59e0b" opacity="0.3"/>
+    <circle cx="120" cy="105" r="3" fill="#f59e0b" opacity="0.25"/>
+    <path d="M40 30 Q38 22 42 20 Q46 22 44 30" fill="#5a3e28"/>
+    <path d="M155 32 Q153 24 157 22 Q161 24 159 32" fill="#5a3e28"/>
+    <path d="M90 38 Q92 30 95 32" fill="#5a3e28" opacity="0.5"/>
+  </svg>`,
+
+  stage: `<svg viewBox="0 0 200 130" fill="none">
+    <rect x="15" y="15" width="170" height="105" rx="8" fill="#1a0a3e"/>
+    <path d="M15 15 Q20 10 30 15 L30 120 L15 120Z" fill="#7c3aed" opacity="0.4"/>
+    <path d="M185 15 Q180 10 170 15 L170 120 L185 120Z" fill="#7c3aed" opacity="0.4"/>
+    <path d="M15 15 Q30 5 100 8 Q170 5 185 15" fill="#4c1d95"/>
+    <path d="M15 15 L25 15 L25 50 Q20 55 15 50Z" fill="#be185d" opacity="0.6"/>
+    <path d="M185 15 L175 15 L175 50 Q180 55 185 50Z" fill="#be185d" opacity="0.6"/>
+    <rect x="40" y="90" width="120" height="25" rx="3" fill="#78350f" stroke="#d4a017" stroke-width="1.5"/>
+    <ellipse cx="100" cy="90" rx="60" ry="4" fill="#92400e"/>
+    <circle cx="60" cy="30" r="6" fill="#fbbf24" opacity="0.7"/>
+    <circle cx="100" cy="25" r="6" fill="#fbbf24" opacity="0.8"/>
+    <circle cx="140" cy="30" r="6" fill="#fbbf24" opacity="0.7"/>
+    <path d="M55 30 L60 20 L65 30" fill="none" stroke="#fde68a" stroke-width="1" opacity="0.4"/>
+    <path d="M95 25 L100 15 L105 25" fill="none" stroke="#fde68a" stroke-width="1" opacity="0.4"/>
+    <path d="M135 30 L140 20 L145 30" fill="none" stroke="#fde68a" stroke-width="1" opacity="0.4"/>
+    <circle cx="80" cy="70" r="8" fill="#c084fc" opacity="0.3"/>
+    <circle cx="120" cy="68" r="8" fill="#c084fc" opacity="0.3"/>
+    <circle cx="100" cy="65" r="10" fill="#c084fc" opacity="0.2"/>
+  </svg>`,
+
+  music: `<svg viewBox="0 0 200 130" fill="none">
+    <circle cx="100" cy="65" r="50" fill="rgba(124,58,237,0.1)" stroke="rgba(196,181,253,0.3)" stroke-width="2"/>
+    <path d="M75 85 L75 40 L130 30 L130 75" stroke="#d4a017" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <circle cx="68" cy="88" r="10" fill="#d4a017" stroke="#b8860b" stroke-width="2"/>
+    <circle cx="123" cy="78" r="10" fill="#d4a017" stroke="#b8860b" stroke-width="2"/>
+    <path d="M75 55 L130 45" stroke="#f5d76e" stroke-width="1.5"/>
+    <path d="M75 65 L130 55" stroke="#f5d76e" stroke-width="1.5"/>
+    <circle cx="50" cy="30" r="2" fill="#c084fc" opacity="0.6"/>
+    <circle cx="150" cy="40" r="2.5" fill="#c084fc" opacity="0.5"/>
+    <path d="M145 25 L147 21 L149 25 L147 29Z" fill="#f5d76e" opacity="0.5"/>
+    <path d="M45 50 L47 46 L49 50 L47 54Z" fill="#f5d76e" opacity="0.4"/>
+    <circle cx="160" cy="85" r="1.5" fill="#f5d76e" opacity="0.4"/>
+    <circle cx="40" cy="90" r="1.5" fill="#c084fc" opacity="0.4"/>
+  </svg>`,
+
+  jasmine: `<svg viewBox="0 0 200 130" fill="none">
+    <ellipse cx="100" cy="120" rx="25" ry="4" fill="rgba(14,165,233,0.15)"/>
+    <path d="M80 118 Q75 85 80 70 Q88 55 100 52 Q112 55 120 70 Q125 85 120 118Z" fill="#0ea5e9" opacity="0.8"/>
+    <circle cx="100" cy="42" r="16" fill="#d2a679"/>
+    <path d="M84 35 Q92 28 100 30 Q108 28 116 35" fill="#1a1a2e" stroke="#0f0f1e" stroke-width="1"/>
+    <path d="M84 35 Q80 40 82 50 Q86 42 100 38 Q114 42 118 50 Q120 40 116 35" fill="#1a1a2e"/>
+    <circle cx="94" cy="40" r="2" fill="#1e1b4b"/><circle cx="106" cy="40" r="2" fill="#1e1b4b"/>
+    <path d="M96 48 Q100 51 104 48" stroke="#c2704e" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+    <circle cx="100" cy="30" r="3" fill="#0ea5e9"/>
+    <path d="M85 32 Q82 25 78 28" stroke="#1a1a2e" stroke-width="2" fill="none"/>
+    <path d="M115 32 Q118 25 122 28" stroke="#1a1a2e" stroke-width="2" fill="none"/>
+    <path d="M82 65 Q75 60 70 65" stroke="#0ea5e9" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <path d="M118 65 Q125 60 130 65" stroke="#0ea5e9" stroke-width="3" fill="none" stroke-linecap="round"/>
+  </svg>`,
+
+  jafar: `<svg viewBox="0 0 200 130" fill="none">
+    <path d="M80 118 Q78 85 82 72 Q90 58 100 55 Q110 58 118 72 Q122 85 120 118Z" fill="#1a1a2e"/>
+    <circle cx="100" cy="44" r="15" fill="#8b7355"/>
+    <path d="M85 38 Q92 30 100 32 Q108 30 115 38" fill="#1a1a2e"/>
+    <path d="M85 38 Q80 32 85 20 Q92 12 100 10 Q108 12 115 20 Q120 32 115 38" fill="#1a1a2e"/>
+    <circle cx="100" cy="10" r="4" fill="#ef4444"/>
+    <path d="M100 6 L100 2" stroke="#ef4444" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="100" cy="1" r="2" fill="#ef4444" opacity="0.6"/>
+    <circle cx="94" cy="42" r="2.5" fill="#fff"/><circle cx="106" cy="42" r="2.5" fill="#fff"/>
+    <circle cx="94" cy="42" r="1.2" fill="#1a1a2e"/><circle cx="106" cy="42" r="1.2" fill="#1a1a2e"/>
+    <path d="M88 38 L93 40" stroke="#1a1a2e" stroke-width="1.5"/>
+    <path d="M112 38 L107 40" stroke="#1a1a2e" stroke-width="1.5"/>
+    <path d="M95 52 Q100 50 105 52" stroke="#8b7355" stroke-width="1.5" fill="none"/>
+    <path d="M75 80 Q65 75 60 80 L55 95" stroke="#1a1a2e" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <circle cx="54" cy="96" r="4" fill="#d4a017"/>
+    <circle cx="54" cy="96" r="6" fill="none" stroke="#ef4444" stroke-width="1" opacity="0.5"/>
+  </svg>`,
+
+  newworld: `<svg viewBox="0 0 200 130" fill="none">
+    <rect x="0" y="0" width="200" height="130" fill="#0c1445" rx="8"/>
+    <circle cx="160" cy="25" r="14" fill="#fef3c7" opacity="0.9"/>
+    <circle cx="155" cy="22" r="12" fill="#0c1445"/>
+    <circle cx="40" cy="20" r="1.5" fill="#fff" opacity="0.7"/>
+    <circle cx="70" cy="12" r="1" fill="#fff" opacity="0.5"/>
+    <circle cx="120" cy="18" r="1.5" fill="#fff" opacity="0.6"/>
+    <circle cx="90" cy="8" r="1" fill="#fff" opacity="0.4"/>
+    <circle cx="30" cy="40" r="1" fill="#fff" opacity="0.3"/>
+    <circle cx="180" cy="50" r="1" fill="#fff" opacity="0.5"/>
+    <path d="M50 95 Q70 60 100 65 Q130 60 150 95" fill="none" stroke="#7c3aed" stroke-width="3" opacity="0.5"/>
+    <path d="M60 90 Q80 65 100 70 Q120 65 140 90" fill="#6d28d9" opacity="0.3"/>
+    <ellipse cx="85" cy="78" rx="5" ry="3" fill="#c084fc" opacity="0.4"/>
+    <ellipse cx="115" cy="76" rx="4" ry="2.5" fill="#c084fc" opacity="0.3"/>
+    <path d="M70 105 Q85 80 100 82 Q115 80 130 105" fill="none" stroke="#d4a017" stroke-width="2"/>
+    <circle cx="100" cy="80" r="3" fill="#f5d76e" opacity="0.5"/>
+    <circle cx="85" cy="85" r="2" fill="#f5d76e" opacity="0.3"/>
+    <path d="M15 120 Q50 100 100 105 Q150 100 185 120" fill="#1e3a5f" opacity="0.5"/>
+  </svg>`
+};
+
+// ── Quiz data ──
+const quizzes = [
+  {
+    cat: 'stage', catLabel: '舞台',
+    q: '劇団四季「アラジン」が日本で開幕したのはいつ？',
+    choices: ['2013年', '2015年', '2017年', '2019年'],
+    answer: 1,
+    explain: '2015年5月24日に開幕！会場は大同生命ミュージカルシアター 電通四季劇場［海］だよ。',
+    svg: 'stage'
+  },
+  {
+    cat: 'character', catLabel: 'キャラクター',
+    q: 'ランプの精ジーニーが叶えてくれる願いの数はいくつ？',
+    choices: ['1つ', '2つ', '3つ', '無限'],
+    answer: 2,
+    explain: 'ジーニーは3つの願いを叶えてくれる魔人！でも「もっと願いを増やして」はダメなルールがあるよ！',
+    svg: 'genie'
+  },
+  {
+    cat: 'story', catLabel: 'ストーリー',
+    q: 'アラジンが暮らしている砂漠の王国の名前は？',
+    choices: ['アグラバー', 'バグダッド', 'アラビア', 'ペルシア'],
+    answer: 0,
+    explain: 'アグラバー王国はアラジンの物語の舞台！砂漠の中にある美しい王宮がある国だよ。',
+    svg: 'palace'
+  },
+  {
+    cat: 'character', catLabel: 'キャラクター',
+    q: 'アラジンが恋をするお姫様の名前は？',
+    choices: ['ベル', 'エルサ', 'ジャスミン', 'アリエル'],
+    answer: 2,
+    explain: 'ジャスミンは聡明で自立心のある王女。自由を求めて王宮をこっそり抜け出すんだよ！',
+    svg: 'jasmine'
+  },
+  {
+    cat: 'story', catLabel: 'ストーリー',
+    q: 'アラジンが魔法のランプを見つけた場所はどこ？',
+    choices: ['王宮の宝物庫', '海底の神殿', '不思議な洞窟', '砂漠のオアシス'],
+    answer: 2,
+    explain: '魔法使いジャファーに連れられて入った不思議な洞窟の中で、魔法のランプを見つけたよ！',
+    svg: 'cave'
+  },
+  {
+    cat: 'music', catLabel: '音楽',
+    q: 'アラジンとジャスミンが魔法のじゅうたんで夜空を飛ぶときの名曲は？',
+    choices: ['レット・イット・ゴー', 'ホール・ニュー・ワールド', 'パート・オブ・ユア・ワールド', 'アンダー・ザ・シー'],
+    answer: 1,
+    explain: '「ホール・ニュー・ワールド（新しい世界へ）」はアカデミー賞も受賞した名曲！舞台でも大感動のシーンだよ！',
+    svg: 'newworld'
+  },
+  {
+    cat: 'character', catLabel: 'キャラクター',
+    q: '悪役ジャファーの正体は何？',
+    choices: ['王様の弟', '国務大臣', '将軍', '盗賊の親分'],
+    answer: 1,
+    explain: 'ジャファーはアグラバー王国の国務大臣。信頼される立場を利用して王国の乗っ取りをたくらんでいるよ！',
+    svg: 'jafar'
+  },
+  {
+    cat: 'music', catLabel: '音楽',
+    q: 'アラジンの音楽を作曲した人は誰？',
+    choices: ['ハンス・ジマー', 'アラン・メンケン', 'ジョン・ウィリアムズ', 'エルトン・ジョン'],
+    answer: 1,
+    explain: 'アラン・メンケンはディズニー音楽の巨匠！「リトル・マーメイド」や「美女と野獣」の音楽も手がけているよ！',
+    svg: 'music'
+  },
+  {
+    cat: 'trivia', catLabel: 'トリビア',
+    q: 'ブロードウェイ版「アラジン」はトニー賞で何を受賞した？',
+    choices: ['最優秀作品賞', '最優秀助演男優賞', '最優秀演出賞', '最優秀衣装賞'],
+    answer: 1,
+    explain: 'ジーニー役のジェームズ・モンロー・アイグルハートが最優秀助演男優賞を受賞！5部門にノミネートされたよ！',
+    svg: 'genie'
+  },
+  {
+    cat: 'stage', catLabel: '舞台',
+    q: 'アラジンとジャスミンが夜空を飛ぶ場面で使われる魔法の乗り物は？',
+    choices: ['魔法のほうき', '魔法のじゅうたん', '魔法の馬車', '魔法の雲'],
+    answer: 1,
+    explain: '魔法のじゅうたんが本当に空を飛ぶ演出は舞台の最大の見どころ！どうやって飛んでいるか、劇場で確かめてみてね！',
+    svg: 'carpet'
+  }
+];
+
+const prefixes = ['A.', 'B.', 'C.', 'D.'];
+let current = 0;
+let score = 0;
+let results = [];
+
+function catClass(cat) {
+  return { story:'cat-story', character:'cat-character', music:'cat-music', stage:'cat-stage', trivia:'cat-trivia' }[cat];
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function startQuiz() {
+  current = 0; score = 0; results = [];
+  showScreen('quiz-screen');
+  renderQuestion();
+}
+
+function renderQuestion() {
+  const q = quizzes[current];
+  document.getElementById('progress-fill').style.width = ((current) / quizzes.length * 100) + '%';
+  document.getElementById('progress-text').textContent = `第${current+1}問 / 全${quizzes.length}問`;
+
+  document.getElementById('quiz-cat').className = 'quiz-category ' + catClass(q.cat);
+  document.getElementById('quiz-cat').textContent = q.catLabel;
+  document.getElementById('quiz-svg').innerHTML = svgIllustrations[q.svg];
+  document.getElementById('quiz-question').textContent = q.q;
+
+  const choicesEl = document.getElementById('choices');
+  choicesEl.innerHTML = '';
+  q.choices.forEach((c, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'choice-btn';
+    btn.textContent = prefixes[i] + ' ' + c;
+    btn.onclick = () => selectAnswer(i);
+    choicesEl.appendChild(btn);
+  });
+
+  document.getElementById('explanation').classList.remove('show');
+  document.getElementById('explanation').innerHTML = '';
+  document.getElementById('next-area').style.display = 'none';
+  document.getElementById('next-area').innerHTML = '';
+  document.getElementById('quiz-screen').scrollTop = 0;
+}
+
+function selectAnswer(idx) {
+  const q = quizzes[current];
+  const btns = document.querySelectorAll('.choice-btn');
+  const correct = idx === q.answer;
+  const flash = document.getElementById('flash');
+
+  btns.forEach((b, i) => {
+    b.classList.add('disabled');
+    if (i === q.answer) b.classList.add(correct ? 'correct' : 'reveal-correct');
+    if (i === idx && !correct) b.classList.add('wrong');
+  });
+
+  if (correct) {
+    score++;
+    results.push(true);
+    flash.className = 'flash-overlay flash-green';
+    spawnMagicSparkles();
+  } else {
+    results.push(false);
+    flash.className = 'flash-overlay flash-red';
+  }
+  setTimeout(() => flash.className = 'flash-overlay', 700);
+
+  const expEl = document.getElementById('explanation');
+  let html = `<div class="result-label ${correct ? 'correct-label' : 'wrong-label'}">${correct ? '⭕ 正解！' : '❌ 残念…'}</div>`;
+  html += `<p>${q.explain}</p>`;
+  expEl.innerHTML = html;
+  expEl.classList.add('show');
+
+  const nextArea = document.getElementById('next-area');
+  nextArea.style.display = 'flex';
+  if (current < quizzes.length - 1) {
+    nextArea.innerHTML = `<button class="btn btn-primary" onclick="nextQuestion()">次の問題へ →</button>`;
+  } else {
+    nextArea.innerHTML = `<button class="btn btn-primary" onclick="showResult()">結果を見る</button>`;
+  }
+}
+
+function nextQuestion() {
+  current++;
+  renderQuestion();
+}
+
+function showResult() {
+  document.getElementById('progress-fill').style.width = '100%';
+  showScreen('result-screen');
+
+  document.getElementById('result-score').innerHTML = `${score}<span> / ${quizzes.length}</span>`;
+
+  const pct = score / quizzes.length;
+  let msg = '';
+  if (pct === 1) msg = 'パーフェクト！アラジンマスター！';
+  else if (pct >= 0.8) msg = 'すごい！ジーニーもビックリ！';
+  else if (pct >= 0.6) msg = 'いい感じ！舞台を観たらもっとわかるよ！';
+  else if (pct >= 0.4) msg = 'まだまだこれから！舞台で確かめよう！';
+  else msg = '舞台を観たらきっと全問正解できるよ！';
+  document.getElementById('result-msg').textContent = msg;
+
+  const detail = document.getElementById('result-detail');
+  detail.innerHTML = '';
+  results.forEach((r, i) => {
+    const d = document.createElement('div');
+    d.className = 'result-dot ' + (r ? 'ok' : 'ng');
+    d.textContent = 'Q' + (i + 1);
+    detail.appendChild(d);
+  });
+
+  if (pct >= 0.7) spawnConfetti(50);
+}
+
+function spawnMagicSparkles(count = 15) {
+  const colors = ['#f5d76e','#c084fc','#a78bfa','#fbbf24','#fff'];
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement('div');
+    el.className = 'sparkle';
+    el.style.left = (30 + Math.random() * 40) + 'vw';
+    el.style.top = (30 + Math.random() * 40) + 'vh';
+    el.style.animationDelay = Math.random() * 0.4 + 's';
+    el.style.animationDuration = (0.6 + Math.random() * 0.6) + 's';
+    const c = colors[Math.floor(Math.random() * colors.length)];
+    el.innerHTML = `<svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 0 L9.5 6.5 L16 8 L9.5 9.5 L8 16 L6.5 9.5 L0 8 L6.5 6.5Z" fill="${c}"/></svg>`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1500);
+  }
+}
+
+function spawnConfetti(count = 30) {
+  const colors = ['#f5d76e','#c084fc','#7c3aed','#fbbf24','#0ea5e9','#22c55e','#fb7185'];
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti-piece';
+    el.style.left = Math.random() * 100 + 'vw';
+    el.style.top = '-10px';
+    el.style.background = colors[Math.floor(Math.random() * colors.length)];
+    el.style.animationDelay = Math.random() * 0.6 + 's';
+    el.style.animationDuration = (0.8 + Math.random() * 1) + 's';
+    const sz = 6 + Math.random() * 8;
+    el.style.width = sz + 'px'; el.style.height = sz + 'px';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 2500);
+  }
+}
+</script>
+</body>
+</html>
